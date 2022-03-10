@@ -41,9 +41,35 @@ so the role:
 2- and do modification to the link:
 https://[row.]github[usercontent].com/mhmd2015/Test1/[branch]/[file path]
 
+# .md Format
+
+## hightligh
+```
+# The largest heading
+## The second largest heading
+###### The smallest heading
+```
+
+## Text Format
+
+
+|Style	|Syntax	|Keyboard |shortcut	|Example	|Output|
+|Bold	|** ** or __ __	|Command+B (Mac) or Ctrl+B (Windows/Linux)	|**This is bold text**|	This is bold text|
+|Italic	|* * or _ _     	|Command+I (Mac) or Ctrl+I (Windows/Linux)	*This text is italicized*	This text is italicized|
+|Strikethrough	|~~ ~~		|~~This was mistaken text~~	|This was mistaken text|
+|Bold and nested italic	|** ** and _ _		|**This text is _extremely_ important**|	This text is extremely important|
+|All bold and italic|	*** ***		|***All this text is important***	|All this text is important|
+
+## Links
+```
+This site was built using [GitHub Pages](https://pages.github.com/).
+```
+This site was built using [GitHub Pages](https://pages.github.com/).
 
 ## Include Pictures:
-
+```
+![boy picture](../master/images/boy.png)
+```
 ![boy picture](../master/images/boy.png)
 
 
@@ -60,3 +86,35 @@ public static async Task GetAsync(String url){
 
 ```
 
+## List
+
+```
+- Mohammed
+- Abdullah
+- Hussein
+
+```
+- Mohammed
+- Abdullah
+- Hussein
+
+## Nested
+```
+1. First list item
+   - First nested list item
+     - Second nested list item
+```
+1. First list item
+   - First nested list item
+     - Second nested list item
+
+
+## Tasks List
+```
+- [x] #739
+- [ ] https://github.com/octo-org/octo-repo/issues/740
+- [ ] Add delight to the experience when all tasks are complete :tada:
+```
+- [x] #739
+- [ ] https://github.com/octo-org/octo-repo/issues/740
+- [ ] Add delight to the experience when all tasks are complete :tada:
