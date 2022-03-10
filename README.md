@@ -1,6 +1,6 @@
 
 # First starting with .md
-
+[<img src="images/logo-blazor.png" align="right" width="80">](https://dotnet.microsoft.com/apps/aspnet/web-apps/client)
 https://github.com/mhmd2015/test1.git
 ```
 echo "# test1" >> README.md
