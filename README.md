@@ -24,3 +24,20 @@ git remote add origin https://github.com/mhmd2015/test1.git
 git branch -M main
 
 git push -u origin main
+
+
+to get the raw of .md
+
+use the following:
+
+https://github.com/mhmd2015
+converted to
+
+https://raw.githubusercontent.com/mhmd2015/Test1/master/README.md
+
+so the role
+
+https://[row.]github[usercontent].com/mhmd2015/Test1/[branch]/[file path]
+
+
+
