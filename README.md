@@ -42,6 +42,11 @@ so the role:
 https://[row.]github[usercontent].com/mhmd2015/Test1/[branch]/[file path]
 
 
+## Include Pictures:
+
+(/master/images/boy.png)
+
+
 
 
 
