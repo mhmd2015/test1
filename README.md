@@ -35,9 +35,13 @@ converted to
 
 https://raw.githubusercontent.com/mhmd2015/Test1/master/README.md
 
-so the role
+so the role:
+1- the repository must be public.
 
+2- and do modification to the link:
 https://[row.]github[usercontent].com/mhmd2015/Test1/[branch]/[file path]
+
+
 
 
 
