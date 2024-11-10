@@ -13,4 +13,5 @@ https://techcommunity.microsoft.com/t5/azure-confidential-computing/azure-ai-con
 #### Project Template
 https://www.projectmanagementdocs.com/template/project-documents/use-case-document/#ixzz6rx8dUabF
 
-
+### developers blogs
+https://devblogs.microsoft.com/dotnet/introducing-microsoft-extensions-vector-data/
