@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masjid Al-Huda | Welcome</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="#" class="text-2xl font-bold text-teal-600">Masjid Al-Huda</a>
+            <div class="hidden md:flex space-x-6 items-center">
+                <a href="#prayer" class="text-slate-600 hover:text-teal-600 transition duration-300">Prayer Times</a>
+                <a href="#services" class="text-slate-600 hover:text-teal-600 transition duration-300">Services</a>
+                <a href="#about" class="text-slate-600 hover:text-teal-600 transition duration-300">About Us</a>
+                <a href="#contact" class="text-slate-600 hover:text-teal-600 transition duration-300">Contact</a>
+                <a href="#" class="bg-teal-500 text-white py-2 px-4 rounded-full hover:bg-teal-600 transition duration-300">Donate</a>
+            </div>
+            <button class="md:hidden text-slate-800">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+            </button>
+        </nav>
+    </header>
+
+    <main>
+        <section class="relative bg-cover bg-center text-white" style="background-image: url('https://images.unsplash.com/photo-1583913582410-db05a2e5132d?q=80&w=2070&auto=format&fit=crop');">
+            <div class="absolute inset-0 bg-black opacity-60"></div>
+            <div class="relative container mx-auto px-6 py-32 text-center">
+                <h1 class="text-4xl md:text-6xl font-bold mb-4">Welcome to Our Community</h1>
+                <p class="text-lg md:text-xl mb-8">A place for worship, learning, and connection.</p>
+                <a href="#services" class="bg-teal-500 text-white py-3 px-8 rounded-full hover:bg-teal-600 transition duration-300 text-lg font-semibold">Explore Our Services</a>
+            </div>
+        </section>
+
+        <section id="prayer" class="py-20 bg-white">
+            <div class="container mx-auto px-6 text-center">
+                <h2 class="text-3xl font-bold mb-2">Daily Prayer Times</h2>
+                <p class="text-slate-500 mb-10">Friday, October 3, 2025</p>
+                
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 max-w-5xl mx-auto">
+                    <div class="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="text-lg font-semibold text-teal-600">Fajr</h3>
+                        <p class="text-3xl font-bold text-slate-800 mt-2">5:30 AM</p>
+                    </div>
+                     <div class="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="text-lg font-semibold text-teal-600">Sunrise</h3>
+                        <p class="text-3xl font-bold text-slate-800 mt-2">6:45 AM</p>
+                    </div>
+                    <div class="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="text-lg font-semibold text-teal-600">Dhuhr</h3>
+                        <p class="text-3xl font-bold text-slate-800 mt-2">1:15 PM</p>
+                    </div>
+                    <div class="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="text-lg font-semibold text-teal-600">Asr</h3>
+                        <p class="text-3xl font-bold text-slate-800 mt-2">4:40 PM</p>
+                    </div>
+                    <div class="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="text-lg font-semibold text-teal-600">Maghrib</h3>
+                        <p class="text-3xl font-bold text-slate-800 mt-2">6:55 PM</p>
+                    </div>
+                    <div class="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="text-lg font-semibold text-teal-600">Isha</h3>
+                        <p class="text-3xl font-bold text-slate-800 mt-2">8:20 PM</p>
+                    </div>
+                </div>
+                 <p class="text-slate-500 mt-8">Jumu'ah Prayer: 1st Khutbah at 1:30 PM</p>
+            </div>
+        </section>
+
+        <section id="services" class="py-20 bg-slate-50">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold">Our Services</h2>
+                    <p class="text-slate-500 mt-2">Dedicated to serving the spiritual and educational needs of our community.</p>
+                </div>
+
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="bg-white rounded-lg shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300">
+                        <div class="p-8">
+                            <h3 class="text-2xl font-bold mb-3">Online Training</h3>
+                            <p class="text-slate-600 mb-6">Access a wealth of knowledge from home with our online Quran, Hadith, and Arabic language classes for all ages.</p>
+                            <a href="#" class="font-semibold text-teal-600 hover:text-teal-700">Learn More &rarr;</a>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300">
+                        <div class="p-8">
+                            <h3 class="text-2xl font-bold mb-3">Congregational Prayers</h3>
+                            <p class="text-slate-600 mb-6">Join us for the five daily prayers, Jumu'ah (Friday) prayers, and special holiday prayers in a serene and welcoming environment.</p>
+                            <a href="#" class="font-semibold text-teal-600 hover:text-teal-700">View Schedule &rarr;</a>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300">
+                        <div class="p-8">
+                            <h3 class="text-2xl font-bold mb-3">Community Programs</h3>
+                            <p class="text-slate-600 mb-6">We host a variety of events, including youth activities, family nights, and interfaith dialogues to strengthen community bonds.</p>
+                            <a href="#" class="font-semibold text-teal-600 hover:text-teal-700">See Events Calendar &rarr;</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer id="contact" class="bg-slate-800 text-white py-12">
+        <div class="container mx-auto px-6 text-center">
+            <h3 class="text-2xl font-bold">Masjid Al-Huda</h3>
+            <p class="mt-2 text-slate-300">123 Faith Street, Bolingbrook, IL, USA</p>
+            <p class="text-slate-300">contact@masjidalhuda.org | (555) 123-4567</p>
+            <div class="flex justify-center space-x-4 mt-6">
+                <a href="#" class="text-slate-300 hover:text-teal-400">Facebook</a>
+                <a href="#" class="text-slate-300 hover:text-teal-400">Twitter</a>
+                <a href="#" class="text-slate-300 hover:text-teal-400">YouTube</a>
+            </div>
+            <p class="mt-8 text-sm text-slate-500">&copy; 2025 Masjid Al-Huda. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+</body>
+</html>
