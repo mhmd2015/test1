@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Workflow Designer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom styles for the workflow designer */
+        .workflow-block {
+            position: absolute;
+            cursor: move;
+            transition: box-shadow 0.2s ease, transform 0.1s ease;
+            user-select: none;
+        }
+        
+        .workflow-block:hover {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+            transform: scale(1.02);
+        }
+        
+        .workflow-block.dragging {
+            opacity: 0.8;
+            z-index: 1000;
+            cursor: grabbing;
+        }
+        
+        .connection-line {
+            position: absolute;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            height: 3px;
+            transform-origin: left center;
+            z-index: 1;
+            border-radius: 2px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            pointer-events: none;
+        }
+        
+        .dark {
+            background-color: #1a1a2e;
+            color: #eee;
+        }
+        
+        .dark .bg-white {
+            background-color: #16213e !important;
+        }
+        
+        .dark .bg-gray-50 {
+            background-color: #0f3460 !important;
+        }
+        
+        .dark .text-gray-700 {
+            color: #e0e0e0 !important;
+        }
+        
+        .dark .text-gray-600 {
+            color: #bdbdbd !important;
+        }
+        
+        .dark .border-gray-200 {
+            border-color: #37474f !important;
+        }
+        
+        .dark .hover\:bg-gray-100:hover {
+            background-color: #263238 !important;
+        }
+        
+        .dark .hover\:bg-gray-50:hover {
+            background-color: #263238 !important;
+        }
+        
+        .dark .sidebar-item {
+            background-color: #263238;
+            color: #e0e0e0;
+        }
+        
+        .dark .sidebar-item:hover {
+            background-color: #37474f;
+        }
+        
+        .dark .config-panel {
+            background-color: #16213e;
+            color: #e0e0e0;
+        }
+        
+        .dark .input-field {
+            background-color: #0f3460;
+            color: #e0e0e0;
+            border-color: #37474f;
+        }
+        
+        .sidebar-item {
+            padding: 12px 15px;
+            margin: 8px 0;
+            border-radius: 8px;
+            cursor: grab;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        
+        .sidebar-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: #6366f1;
+        }
+        
+        .sidebar-item:active {
+            cursor: grabbing;
+        }
+        
+        .sidebar-item.dragging {
+            opacity: 0.5;
+        }
+        
+        .canvas-container {
+            position: relative;
+            background-image: 
+                linear-gradient(rgba(229, 231, 235, 0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(229, 231, 235, 0.3) 1px, transparent 1px);
+            background-size: 25px 25px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .canvas-container.drag-over {
+            background-color: rgba(99, 102, 241, 0.05);
+        }
+        
+        .dark .canvas-container {
+            background-image: 
+                linear-gradient(rgba(55, 71, 79, 0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(55, 71, 79, 0.3) 1px, transparent 1px);
+        }
+        
+        .node {
+            position: absolute;
+            min-width: 160px;
+            padding: 18px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            cursor: grab;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            background: white;
+            z-index: 10;
+        }
+        
+        .node:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+        
+        .node.selected {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+            z-index: 11;
+        }
+        
+        .node.dragging {
+            cursor: grabbing;
+            transform: scale(1.05);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            transition: none;
+        }
+        
+        .start-node {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        
+        .agent-node {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: white;
+        }
+        
+        .tool-node {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+        
+        .manager-node {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+        
+        .condition-node {
+            background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+            color: white;
+        }
+        
+        .loop-node {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+        }
+        
+        .merge-node {
+            background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+            color: white;
+        }
+        
+        .orchestrator-node {
+            background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+            color: white;
+        }
+        
+        .api-node {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            color: white;
+        }
+        
+        .connection-point {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border: 3px solid #6366f1;
+            border-radius: 50%;
+            cursor: crosshair;
+            transition: all 0.2s ease;
+            z-index: 12;
+        }
+        
+        .connection-point:hover {
+            transform: scale(1.3);
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+        
+        .connection-point.input {
+            left: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .connection-point.output {
+            right: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .connection-point.connecting {
+            background: #6366f1;
+            animation: pulse 1s infinite;
+        }
+        
+        .config-panel {
+            position: absolute;
+            right: 0;
+            top: 0;
+            height: 100%;
+            width: 320px;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            z-index: 20;
+            box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .config-panel.active {
+            transform: translateX(0);
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            transition: all 0.2s ease;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        .notification {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .notification.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .temp-connection {
+            position: absolute;
+            background: #6366f1;
+            height: 3px;
+            transform-origin: left center;
+            z-index: 5;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+            }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-700 transition-colors duration-300">
+    <!-- Top Section -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="flex justify-between items-center px-6 py-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">M</div>
+                <h1 class="text-xl font-semibold">AI Workflow Designer</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="loginBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Login
+                </button>
+                <button id="themeToggle" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
+                    <i class="fas fa-moon text-gray-700"></i>
+                </button>
+            </div>
+        </div>
+        <nav class="px-6 py-3 bg-gray-50 border-t border-gray-200">
+            <ul class="flex space-x-8">
+                <li><a href="#" class="text-indigo-600 font-medium hover:text-indigo-800 transition-colors">Dashboard</a></li>
+                <li><a href="#" class="hover:text-indigo-600 transition-colors">Workflows</a></li>
+                <li><a href="#" class="hover:text-indigo-600 transition-colors">Agents</a></li>
+                <li><a href="#" class="hover:text-indigo-600 transition-colors">Tools</a></li>
+                <li><a href="#" class="hover:text-indigo-600 transition-colors">Analytics</a></li>
+                <li><a href="#" class="hover:text-indigo-600 transition-colors">Settings</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="flex h-screen pt-28" style="height: calc(100vh - 7rem);">
+        <!-- Left Sidebar - Available Blocks -->
+        <aside class="w-64 bg-white border-r border-gray-200 p-4 overflow-y-auto">
+            <h2 class="text-lg font-semibold mb-4">Components</h2>
+            
+            <div class="mb-6">
+                <h3 class="text-sm font-medium text-gray-500 mb-2">Basic Elements</h3>
+                <div class="sidebar-item" draggable="true" data-type="start">
+                    <i class="fas fa-play-circle mr-2 text-green-500"></i>Start Node
+                </div>
+                <div class="sidebar-item" draggable="true" data-type="agent">
+                    <i class="fas fa-robot mr-2 text-blue-500"></i>Agent
+                </div>
+                <div class="sidebar-item" draggable="true" data-type="tool">
+                    <i class="fas fa-tools mr-2 text-amber-500"></i>Tool
+                </div>
+                <div class="sidebar-item" draggable="true" data-type="manager">
+                    <i class="fas fa-user-tie mr-2 text-red-500"></i>Manager Agent
+                </div>
+            </div>
+            
+            <div class="mb-6">
+                <h3 class="text-sm font-medium text-gray-500 mb-2">Logic Operators</h3>
+                <div class="sidebar-item" draggable="true" data-type="condition">
+                    <i class="fas fa-code-branch mr-2 text-purple-500"></i>Condition
+                </div>
+                <div class="sidebar-item" draggable="true" data-type="loop">
+                    <i class="fas fa-redo mr-2 text-indigo-500"></i>Loop
+                </div>
+                <div class="sidebar-item" draggable="true" data-type="merge">
+                    <i class="fas fa-code-merge mr-2 text-teal-500"></i>Merge
+                </div>
+            </div>
+            
+            <div class="mb-6">
+                <h3 class="text-sm font-medium text-gray-500 mb-2">Advanced</h3>
+                <div class="sidebar-item" draggable="true" data-type="orchestrator">
+                    <i class="fas fa-project-diagram mr-2 text-pink-500"></i>Adaptive Orchestrator
+                </div>
+                <div class="sidebar-item" draggable="true" data-type="api">
+                    <i class="fas fa-plug mr-2 text-cyan-500"></i>API Integration
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content - Workflow Designer -->
+        <main class="flex-1 relative overflow-hidden">
+            <div class="absolute top-0 left-0 right-0 bg-white border-b border-gray-200 p-3 z-10 flex justify-between items-center">
+                <div class="flex space-x-2">
+                    <button id="runBtn" class="px-3 py-1.5 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
+                        <i class="fas fa-play mr-1"></i>Run
+                    </button>
+                    <button id="saveBtn" class="px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+                        <i class="fas fa-save mr-1"></i>Save
+                    </button>
+                    <button id="clearBtn" class="px-3 py-1.5 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors">
+                        <i class="fas fa-trash mr-1"></i>Clear
+                    </button>
+                </div>
+                <div class="text-sm text-gray-500">
+                    <span id="nodeCount">0</span> nodes | <span id="connectionCount">0</span> connections
+                </div>
+            </div>
+            
+            <div id="canvas" class="canvas-container w-full h-full pt-12 overflow-auto">
+                <!-- Workflow nodes will be added here dynamically -->
+            </div>
+            
+            <!-- Right Configuration Panel -->
+            <div id="configPanel" class="config-panel bg-white border-l border-gray-200 p-6 shadow-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">Configuration</h3>
+                    <button id="closeConfig" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div id="configContent">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">Node Type</label>
+                        <div id="nodeType" class="px-3 py-2 bg-gray-100 rounded">-</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">Node Name</label>
+                        <input id="nodeName" type="text" class="input-field" placeholder="Enter node name">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">Description</label>
+                        <textarea id="nodeDescription" class="input-field" rows="3" placeholder="Enter description"></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">Parameters</label>
+                        <div id="nodeParams" class="space-y-2">
+                            <!-- Parameters will be added dynamically based on node type -->
+                        </div>
+                    </div>
+                    
+                    <button id="applyConfig" class="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">
+                        Apply Changes
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <div class="flex items-center space-x-2 mb-4">
+                        <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">M</div>
+                        <span class="text-lg font-semibold">AI Workflow</span>
+                    </div>
+                    <p class="text-gray-400 text-sm">Design and automate complex AI workflows with ease.</p>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Product</h3>
+                    <ul class="space-y-2 text-gray-400 text-sm">
+                        <li><a href="#" class="hover:text-white transition-colors">Features</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Pricing</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Documentation</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">API Reference</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Company</h3>
+                    <ul class="space-y-2 text-gray-400 text-sm">
+                        <li><a href="#" class="hover:text-white transition-colors">About Us</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Careers</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Blog</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Contact</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Connect</h3>
+                    <div class="flex space-x-4 mb-4">
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fab fa-twitter text-xl"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fab fa-github text-xl"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fab fa-linkedin text-xl"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fab fa-discord text-xl"></i>
+                        </a>
+                    </div>
+                    <p class="text-gray-400 text-sm">Subscribe to our newsletter for updates</p>
+                    <div class="mt-2 flex">
+                        <input type="email" placeholder="Your email" class="px-3 py-2 bg-gray-700 text-white rounded-l flex-1 focus:outline-none">
+                        <button class="px-4 py-2 bg-indigo-600 text-white rounded-r hover:bg-indigo-700 transition-colors">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-700 mt-8 pt-6 text-center text-gray-400 text-sm">
+                <p>&copy; 2023 AI Workflow Designer. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Notification -->
+    <div id="notification" class="notification">
+        <span id="notificationText"></span>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            let selectedNode = null;
+            let nodeCounter = 0;
+            let connectionCounter = 0;
+            let isDragging = false;
+            let isConnecting = false;
+            let dragOffset = { x: 0, y: 0 };
+            let connectingFrom = null;
+            let tempConnection = null;
+            let currentDraggingNode = null;
+            
+            // Theme toggle
+            $('#themeToggle').click(function() {
+                $('body').toggleClass('dark');
+                const icon = $(this).find('i');
+                if ($('body').hasClass('dark')) {
+                    icon.removeClass('fa-moon').addClass('fa-sun');
+                } else {
+                    icon.removeClass('fa-sun').addClass('fa-moon');
+                }
+            });
+            
+            // Login button
+            $('#loginBtn').click(function() {
+                showNotification('Login functionality would be implemented here');
+            });
+            
+            // Drag and drop from sidebar to canvas
+            $('.sidebar-item').on('dragstart', function(e) {
+                $(this).addClass('dragging');
+                e.originalEvent.dataTransfer.effectAllowed = 'copy';
+                e.originalEvent.dataTransfer.setData('text/plain', $(this).data('type'));
+            });
+            
+            $('.sidebar-item').on('dragend', function(e) {
+                $(this).removeClass('dragging');
+            });
+            
+            // Canvas drag over and drop
+            $('#canvas').on('dragover', function(e) {
+                e.preventDefault();
+                e.originalEvent.dataTransfer.dropEffect = 'copy';
+                $(this).addClass('drag-over');
+            });
+            
+            $('#canvas').on('dragleave', function(e) {
+                if (e.target === this) {
+                    $(this).removeClass('drag-over');
+                }
+            });
+            
+            $('#canvas').on('drop', function(e) {
+                e.preventDefault();
+                $(this).removeClass('drag-over');
+                
+                const type = e.originalEvent.dataTransfer.getData('text/plain');
+                const canvas = $(this);
+                const canvasOffset = canvas.offset();
+                
+                const x = e.originalEvent.pageX - canvasOffset.left - 80;
+                const y = e.originalEvent.pageY - canvasOffset.top - 40;
+                
+                addNodeToCanvas(type, x, y);
+            });
+            
+            // Add node to canvas
+            function addNodeToCanvas(type, x, y) {
+                nodeCounter++;
+                const nodeId = `node-${nodeCounter}`;
+                const canvas = $('#canvas');
+                
+                // If position not provided, use random position
+                if (x === undefined || y === undefined) {
+                    x = Math.random() * (canvas.width() - 200) + 50;
+                    y = Math.random() * (canvas.height() - 200) + 50;
+                }
+                
+                let nodeClass = '';
+                let icon = '';
+                let label = '';
+                
+                switch(type) {
+                    case 'start':
+                        nodeClass = 'start-node';
+                        icon = 'fa-play-circle';
+                        label = 'Start';
+                        break;
+                    case 'agent':
+                        nodeClass = 'agent-node';
+                        icon = 'fa-robot';
+                        label = 'Agent';
+                        break;
+                    case 'tool':
+                        nodeClass = 'tool-node';
+                        icon = 'fa-tools';
+                        label = 'Tool';
+                        break;
+                    case 'manager':
+                        nodeClass = 'manager-node';
+                        icon = 'fa-user-tie';
+                        label = 'Manager Agent';
+                        break;
+                    case 'condition':
+                        nodeClass = 'condition-node';
+                        icon = 'fa-code-branch';
+                        label = 'Condition';
+                        break;
+                    case 'loop':
+                        nodeClass = 'loop-node';
+                        icon = 'fa-redo';
+                        label = 'Loop';
+                        break;
+                    case 'merge':
+                        nodeClass = 'merge-node';
+                        icon = 'fa-code-merge';
+                        label = 'Merge';
+                        break;
+                    case 'orchestrator':
+                        nodeClass = 'orchestrator-node';
+                        icon = 'fa-project-diagram';
+                        label = 'Adaptive Orchestrator';
+                        break;
+                    case 'api':
+                        nodeClass = 'api-node';
+                        icon = 'fa-plug';
+                        label = 'API Integration';
+                        break;
+                }
+                
+                const node = $(`
+                    <div id="${nodeId}" class="node ${nodeClass}" data-type="${type}" style="left: ${x}px; top: ${y}px;">
+                        <i class="fas ${icon} mb-2 text-2xl"></i>
+                        <div class="font-medium">${label} ${nodeCounter}</div>
+                        <div class="connection-point input" data-node="${nodeId}" data-type="input"></div>
+                        <div class="connection-point output" data-node="${nodeId}" data-type="output"></div>
+                    </div>
+                `);
+                
+                canvas.append(node);
+                updateNodeCount();
+                
+                // Node mouse events
+                node.on('mousedown', function(e) {
+                    if ($(e.target).hasClass('connection-point')) {
+                        // Start connection
+                        e.stopPropagation();
+                        startConnection($(this), $(e.target));
+                        return false;
+                    }
+                    
+                    // Start dragging
+                    e.preventDefault();
+                    e.stopPropagation();
+                    startDragging($(this), e);
+                    return false;
+                });
+                
+                // Node click to show config
+                node.on('click', function(e) {
+                    if (!isDragging && !isConnecting && !$(e.target).hasClass('connection-point')) {
+                        $('.node').removeClass('selected');
+                        $(this).addClass('selected');
+                        showConfigPanel($(this));
+                    }
+                });
+            }
+            
+            // Start dragging a node
+            function startDragging(node, e) {
+                isDragging = true;
+                currentDraggingNode = node;
+                
+                const canvas = $('#canvas');
+                const canvasOffset = canvas.offset();
+                
+                dragOffset.x = e.pageX - canvasOffset.left - parseInt(node.css('left'));
+                dragOffset.y = e.pageY - canvasOffset.top - parseInt(node.css('top'));
+                
+                node.addClass('dragging');
+                $('.node').removeClass('selected');
+            }
+            
+            // Start connection
+            function startConnection(node, connectionPoint) {
+                isConnecting = true;
+                connectingFrom = { node: node, point: connectionPoint };
+                connectionPoint.addClass('connecting');
+                
+                // Create temporary connection line
+                const canvas = $('#canvas');
+                const canvasOffset = canvas.offset();
+                const pointPos = connectionPoint.offset();
+                
+                const startX = pointPos.left - canvasOffset.left + 8;
+                const startY = pointPos.top - canvasOffset.top + 8;
+                
+                tempConnection = $('<div class="temp-connection"></div>').css({
+                    left: startX + 'px',
+                    top: startY + 'px',
+                    width: '0px'
+                });
+                
+                canvas.append(tempConnection);
+            }
+            
+            // Mouse move for dragging and connecting
+            $(document).on('mousemove', function(e) {
+                if (isDragging && currentDraggingNode) {
+                    const canvas = $('#canvas');
+                    const canvasOffset = canvas.offset();
+                    
+                    let newX = e.pageX - canvasOffset.left - dragOffset.x;
+                    let newY = e.pageY - canvasOffset.top - dragOffset.y;
+                    
+                    // Keep node within canvas bounds
+                    newX = Math.max(0, Math.min(newX, canvas.width() - currentDraggingNode.outerWidth()));
+                    newY = Math.max(0, Math.min(newY, canvas.height() - currentDraggingNode.outerHeight()));
+                    
+                    currentDraggingNode.css({
+                        left: newX + 'px',
+                        top: newY + 'px'
+                    });
+                    
+                    // Update connections for this node
+                    updateNodeConnections(currentDraggingNode.attr('id'));
+                }
+                
+                if (isConnecting && tempConnection) {
+                    const canvas = $('#canvas');
+                    const canvasOffset = canvas.offset();
+                    
+                    const startX = parseInt(tempConnection.css('left'));
+                    const startY = parseInt(tempConnection.css('top'));
+                    
+                    const endX = e.pageX - canvasOffset.left;
+                    const endY = e.pageY - canvasOffset.top;
+                    
+                    const length = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+                    const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
+                    
+                    tempConnection.css({
+                        width: length + 'px',
+                        transform: `rotate(${angle}deg)`
+                    });
+                }
+            });
+            
+            // Mouse up to end dragging/connecting
+            $(document).on('mouseup', function(e) {
+                if (isDragging && currentDraggingNode) {
+                    currentDraggingNode.removeClass('dragging');
+                    isDragging = false;
+                    currentDraggingNode = null;
+                }
+                
+                if (isConnecting) {
+                    // Check if we're over a connection point
+                    const target = $(e.target);
+                    
+                    if (target.hasClass('connection-point') && 
+                        target.data('node') !== connectingFrom.node.attr('id') &&
+                        target.data('type') === 'input' &&
+                        connectingFrom.point.data('type') === 'output') {
+                        
+                        createConnection(connectingFrom.node, target.closest('.node'));
+                    }
+                    
+                    // Clean up
+                    if (tempConnection) {
+                        tempConnection.remove();
+                        tempConnection = null;
+                    }
+                    
+                    $('.connection-point').removeClass('connecting');
+                    isConnecting = false;
+                    connectingFrom = null;
+                }
+            });
+            
+            // Update connections for a specific node
+            function updateNodeConnections(nodeId) {
+                // Find all connections connected to this node and update their positions
+                $(`.connection-line[data-from="${nodeId}"], .connection-line[data-to="${nodeId}"]`).each(function() {
+                    const connection = $(this);
+                    const fromId = connection.data('from');
+                    const toId = connection.data('to');
+                    
+                    const fromNode = $(`#${fromId}`);
+                    const toNode = $(`#${toId}`);
+                    
+                    if (fromNode.length && toNode.length) {
+                        updateConnectionLine(connection, fromNode, toNode);
+                    }
+                });
+            }
+            
+            // Update connection line position
+            function updateConnectionLine(connection, fromNode, toNode) {
+                const fromPos = {
+                    x: parseInt(fromNode.css('left')) + fromNode.outerWidth(),
+                    y: parseInt(fromNode.css('top')) + fromNode.outerHeight() / 2
+                };
+                
+                const toPos = {
+                    x: parseInt(toNode.css('left')),
+                    y: parseInt(toNode.css('top')) + toNode.outerHeight() / 2
+                };
+                
+                const length = Math.sqrt(Math.pow(toPos.x - fromPos.x, 2) + Math.pow(toPos.y - fromPos.y, 2));
+                const angle = Math.atan2(toPos.y - fromPos.y, toPos.x - fromPos.x) * 180 / Math.PI;
+                
+                connection.css({
+                    left: fromPos.x + 'px',
+                    top: fromPos.y + 'px',
+                    width: length + 'px',
+                    transform: `rotate(${angle}deg)`
+                });
+            }
+            
+            // Create connection between nodes
+            function createConnection(fromNode, toNode) {
+                connectionCounter++;
+                const connectionId = `connection-${connectionCounter}`;
+                
+                const connection = $(`
+                    <div id="${connectionId}" class="connection-line" 
+                         data-from="${fromNode.attr('id')}" 
+                         data-to="${toNode.attr('id')}"></div>
+                `);
+                
+                $('#canvas').append(connection);
+                updateConnectionLine(connection, fromNode, toNode);
+                updateConnectionCount();
+                showNotification('Connection created');
+            }
+            
+            // Show configuration panel
+            function showConfigPanel(node) {
+                const type = node.data('type');
+                const name = node.find('div.font-medium').text();
+                
+                $('#nodeType').text(type.charAt(0).toUpperCase() + type.slice(1));
+                $('#nodeName').val(name);
+                
+                // Clear previous parameters
+                $('#nodeParams').empty();
+                
+                // Add parameters based on node type
+                switch(type) {
+                    case 'agent':
+                        $('#nodeParams').append(`
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Agent Type</label>
+                                <select class="input-field">
+                                    <option>Chat Agent</option>
+                                    <option>Task Agent</option>
+                                    <option>Decision Agent</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Model</label>
+                                <select class="input-field">
+                                    <option>GPT-4</option>
+                                    <option>GPT-3.5</option>
+                                    <option>Claude</option>
+                                </select>
+                            </div>
+                        `);
+                        break;
+                    case 'tool':
+                        $('#nodeParams').append(`
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Tool Type</label>
+                                <select class="input-field">
+                                    <option>API Call</option>
+                                    <option>Database Query</option>
+                                    <option>File Operation</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Endpoint</label>
+                                <input type="text" class="input-field" placeholder="https://api.example.com">
+                            </div>
+                        `);
+                        break;
+                    case 'condition':
+                        $('#nodeParams').append(`
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Condition Expression</label>
+                                <input type="text" class="input-field" placeholder="variable == 'value'">
+                            </div>
+                        `);
+                        break;
+                    case 'orchestrator':
+                        $('#nodeParams').append(`
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Strategy</label>
+                                <select class="input-field">
+                                    <option>Sequential</option>
+                                    <option>Parallel</option>
+                                    <option>Conditional</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Max Retries</label>
+                                <input type="number" class="input-field" value="3">
+                            </div>
+                        `);
+                        break;
+                    default:
+                        $('#nodeParams').append(`
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Parameter 1</label>
+                                <input type="text" class="input-field" placeholder="Value">
+                            </div>
+                        `);
+                }
+                
+                $('#configPanel').addClass('active');
+                
+                // Store reference to the node being configured
+                $('#configPanel').data('node', node);
+            }
+            
+            // Close configuration panel
+            $('#closeConfig').click(function() {
+                $('#configPanel').removeClass('active');
+                $('.node').removeClass('selected');
+            });
+            
+            // Apply configuration changes
+            $('#applyConfig').click(function() {
+                const node = $('#configPanel').data('node');
+                const newName = $('#nodeName').val();
+                
+                if (node && newName) {
+                    node.find('div.font-medium').text(newName);
+                    showNotification('Configuration updated successfully');
+                }
+            });
+            
+            // Run workflow
+            $('#runBtn').click(function() {
+                if (nodeCounter === 0) {
+                    showNotification('Please add nodes to the workflow first');
+                    return;
+                }
+                showNotification('Workflow execution started');
+                
+                // Add pulse animation to nodes during execution
+                $('.node').addClass('pulse');
+                
+                setTimeout(() => {
+                    $('.node').removeClass('pulse');
+                    showNotification('Workflow completed successfully');
+                }, 2000);
+            });
+            
+            // Save workflow
+            $('#saveBtn').click(function() {
+                showNotification('Workflow saved successfully');
+            });
+            
+            // Clear canvas
+            $('#clearBtn').click(function() {
+                if (confirm('Are you sure you want to clear the workflow?')) {
+                    $('#canvas').empty();
+                    nodeCounter = 0;
+                    connectionCounter = 0;
+                    updateNodeCount();
+                    updateConnectionCount();
+                    showNotification('Workflow cleared');
+                }
+            });
+            
+            // Update node count
+            function updateNodeCount() {
+                $('#nodeCount').text(nodeCounter);
+            }
+            
+            // Update connection count
+            function updateConnectionCount() {
+                $('#connectionCount').text(connectionCounter);
+            }
+            
+            // Show notification
+            function showNotification(message) {
+                $('#notificationText').text(message);
+                $('#notification').addClass('show');
+                
+                setTimeout(() => {
+                    $('#notification').removeClass('show');
+                }, 3000);
+            }
+            
+            // Initialize with a sample workflow
+            setTimeout(() => {
+                addNodeToCanvas('start', 50, 150);
+                addNodeToCanvas('orchestrator', 250, 150);
+                addNodeToCanvas('agent', 450, 100);
+                addNodeToCanvas('tool', 450, 200);
+                addNodeToCanvas('manager', 650, 150);
+                
+                // Create connections
+                setTimeout(() => {
+                    createConnection($('#node-1'), $('#node-2'));
+                    createConnection($('#node-2'), $('#node-3'));
+                    createConnection($('#node-2'), $('#node-4'));
+                    createConnection($('#node-3'), $('#node-5'));
+                    createConnection($('#node-4'), $('#node-5'));
+                }, 100);
+            }, 500);
+        });
+    </script>
+</body>
+</html>

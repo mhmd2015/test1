@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Workflow Designer</title>
+    <!-- 1. Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 2. jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
+    <!-- 3. jQuery UI (for Draggable/Droppable) -->
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.3/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/ui/1.13.3/jquery-ui.min.js"></script>
+    
+    <!-- 4. Leader-line (for connecting blocks) -->
+    <script src="https://cdn.jsdelivr.net/npm/leader-line-new@1.1.9/leader-line.min.js"></script>
+    
+    <!-- 5. Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Enable dark mode using a class
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'brand-primary': '#1e40af', // Example primary color
+                        'brand-secondary': '#3b82f6',
+                        'dark-bg': '#0f172a',
+                        'dark-nav': '#1e293b',
+                        'dark-card': '#334155',
+                        'dark-border': '#475569',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- 4. Custom Styles -->
+    <style>
+        /* Simple scrollbar for dark mode */
+        .dark ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background-color: #475569;
+            border-radius: 20px;
+        }
+
+        /* Styles for the block designer */
+        #main-designer {
+            position: relative; /* Crucial for absolute positioning of blocks */
+            min-height: 80vh; /* Taller canvas */
+            /* Subtle dot-grid pattern */
+            background-color: #ffffff;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 0);
+            background-size: 16px 16px;
+        }
+        .dark #main-designer {
+            background-color: var(--tw-prose-invert-bg, #0f172a); /* Use Tailwind's dark bg */
+            background-image: radial-gradient(#475569 1px, transparent 0);
+        }
+
+        .workflow-block-item {
+            position: absolute;
+            z-index: 10;
+            width: 288px; /* w-72 */
+        }
+        
+        /* The draggable/clickable content part of the block */
+        .block-content {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0; /* gray-200 */
+            border-radius: 0.75rem; /* rounded-xl */
+            cursor: move;
+            transition: box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* subtle shadow */
+        }
+        .dark .block-content {
+            background-color: #1e293b; /* dark-nav */
+            border-color: #475569; /* dark-border */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        
+        .workflow-block-item.selected-block .block-content {
+            border-color: #3b82f6 !important; /* brand-secondary */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
+            z-index: 11;
+        }
+        
+        /* Special style for the Start block */
+        #start-block {
+            width: auto;
+            cursor: default !important;
+        }
+        .start-block-content {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem; /* py-3 px-6 */
+            border-radius: 9999px; /* rounded-full */
+            background-color: #f1f5f9; /* gray-100 */
+            border: 1px solid #e2e8f0; /* gray-200 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            cursor: default !important;
+        }
+        .dark .start-block-content {
+            background-color: #334155; /* dark-card */
+            border-color: #475569; /* dark-border */
+        }
+        #start-block.selected-block .start-block-content {
+             border-color: #3b82f6 !important; /* brand-secondary */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
+        }
+
+
+        .connector-point {
+            width: 14px;
+            height: 14px;
+            background-color: #fff;
+            border: 2px solid #94a3b8; /* gray-400 */
+            border-radius: 9999px; /* rounded-full */
+            position: absolute;
+            cursor: crosshair;
+            z-index: 12;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b; /* gray-500 */
+            transition: all 0.1s ease;
+        }
+        .dark .connector-point {
+            background-color: #334155; /* dark-card */
+            border-color: #64748b; /* gray-500 */
+            color: #cbd5e1; /* gray-300 */
+        }
+        .connector-point:hover {
+            background-color: #3b82f6;
+            border-color: #1e40af;
+            color: #fff;
+        }
+
+        /* Adjust position for new 14px size */
+        .connector-point.top { top: -7px; left: 50%; transform: translateX(-50%); }
+        .connector-point.bottom { bottom: -7px; left: 50%; transform: translateX(-50%); }
+        .connector-point.left { left: -7px; top: 50%; transform: translateY(-50%); }
+        .connector-point.right { right: -7px; top: 50%; transform: translateY(-50%); }
+
+        /* Style for leader lines */
+        .leader-line {
+            stroke-width: 2px;
+            stroke: #94a3b8; /* gray-400 */
+        }
+        .dark .leader-line {
+            stroke: #94a3b8; /* gray-400 */
+        }
+        /* Make the line clickable */
+        .leader-line:hover {
+            stroke: #ef4444; /* red-500 */
+            cursor: pointer;
+        }
+        
+        /* Sidebar draggable helper */
+        .draggable-helper {
+            z-index: 9999 !important;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body class="bg-white dark:bg-dark-bg text-gray-900 dark:text-gray-100 font-sans antialiased">
+
+    <!-- App Container -->
+    <div class="flex flex-col h-screen">
+
+        <!-- ======================================= -->
+        <!-- 1. Top Section (Header & Nav)           -->
+        <!-- ======================================= -->
+        <header class="bg-white dark:bg-dark-nav border-b border-gray-200 dark:border-dark-border shadow-sm sticky top-0 z-30">
+            <!-- Top Bar -->
+            <div class="container mx-auto px-4 h-16 flex justify-between items-center">
+                <!-- Left Side: Logo & Title -->
+                <div class="flex items-center space-x-4">
+                    <!-- Logo "M" -->
+                    <div class="w-10 h-10 bg-brand-primary rounded-lg flex items-center justify-center text-white text-xl font-bold">
+                        M
+                    </div>
+                    <span class="text-xl font-semibold text-gray-800 dark:text-white">Workflow</span>
+                </div>
+                
+                <!-- Right Side: Buttons -->
+                <div class="flex items-center space-x-4">
+                    <!-- Dark/Light Mode Toggle -->
+                    <button id="theme-toggle" class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-card">
+                        <!-- Sun Icon -->
+                        <svg id="theme-icon-light" class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-6.364-.386l1.591-1.591M3 12h2.25m.386-6.364l1.591 1.591" />
+                        </svg>
+                        <!-- Moon Icon (hidden by default) -->
+                        <svg id="theme-icon-dark" class="w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25c0 5.385 4.365 9.75 9.75 9.75 2.57 0 4.88-.985 6.697-2.602z" />
+                        </svg>
+                    </button>
+                    <!-- Login Button -->
+                    <button class="bg-brand-primary hover:bg-brand-secondary text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        Login
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Bottom Bar (Sub-menu) -->
+            <nav class="container mx-auto px-4 h-12 flex items-center space-x-6">
+                <a href="#" class="text-sm font-medium text-brand-primary border-b-2 border-brand-primary">Dashboard</a>
+                <a href="#" class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Workflow</a>
+                <a href="#" class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Deployments</a>
+                <a href="#" class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Connections</a>
+                <a href="#" class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Assets</a>
+                <a href="#" class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Datasets</a>
+            </nav>
+        </header>
+
+        <!-- Main Content Area (Layout for sections 2, 3, 4) -->
+        <div class="flex-1 flex overflow-hidden">
+
+            <!-- ======================================= -->
+            <!-- 2. Left Side (Available Blocks)         -->
+            <!-- ======================================= -->
+            <aside class="w-72 bg-white dark:bg-dark-nav border-r border-gray-200 dark:border-dark-border p-4 overflow-y-auto flex-shrink-0">
+                <h2 class="text-lg font-semibold mb-4">Available Blocks</h2>
+                
+                <!-- Accordion Group -->
+                <div class="space-y-2">
+                    <!-- Logic Operators -->
+                    <div class="accordion-item">
+                        <button class="accordion-header flex justify-between items-center w-full p-2 rounded-lg text-left text-sm font-medium hover:bg-gray-100 dark:hover:bg-dark-card">
+                            <span>LOGIC OPERATORS</span>
+                            <svg class="accordion-icon w-4 h-4 transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                        </button>
+                        <div class="accordion-content hidden pl-2 pt-2 space-y-2">
+                            <div class="draggable-block flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-card cursor-grab"
+                                 data-block-title="Choice"
+                                 data-block-description="Add if-else logic"
+                                 data-icon-bg="bg-blue-100"
+                                 data-icon-color="text-blue-600"
+                                 data-icon-svg="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636">
+                                <div class="p-1 bg-blue-100 rounded-md"><svg class="w-5 h-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg></div>
+                                <div>
+                                    <div class="text-sm font-medium">Choice</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">Add if-else logic</div>
+                                </div>
+                            </div>
+                            <div class="draggable-block flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-card cursor-grab"
+                                 data-block-title="Map"
+                                 data-block-description="Parallel workflow"
+                                 data-icon-bg="bg-green-100"
+                                 data-icon-color="text-green-600"
+                                 data-icon-svg="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12">
+                                <div class="p-1 bg-green-100 rounded-md"><svg class="w-5 h-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" /></svg></div>
+                                <div>
+                                    <div class="text-sm font-medium">Map</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">Parallel workflow</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Agent Management -->
+                    <div class="accordion-item">
+                        <button class="accordion-header flex justify-between items-center w-full p-2 rounded-lg text-left text-sm font-medium hover:bg-gray-100 dark:hover:bg-dark-card">
+                            <span>AGENT MANAGEMENT</span>
+                            <svg class="accordion-icon w-4 h-4 transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                        </button>
+                        <div class="accordion-content hidden pl-2 pt-2 space-y-2">
+                             <div class="draggable-block flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-card cursor-grab"
+                                  data-block-title="Adaptive Orchestrator"
+                                  data-block-description="Coordinates agents"
+                                  data-icon-bg="bg-purple-100"
+                                  data-icon-color="text-purple-600"
+                                  data-icon-svg="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75">
+                                <div class="p-1 bg-purple-100 rounded-md"><svg class="w-5 h-5 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" /></svg></div>
+                                <div>
+                                    <div class="text-sm font-medium">Adaptive Orchestrator</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">Coordinates agents</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Agents -->
+                    <div class="accordion-item">
+                        <button class="accordion-header flex justify-between items-center w-full p-2 rounded-lg text-left text-sm font-medium hover:bg-gray-100 dark:hover:bg-dark-card">
+                            <span>AGENTS</span>
+                            <svg class="accordion-icon w-4 h-4 transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                        </button>
+                        <div class="accordion-content hidden pl-2 pt-2 space-y-2">
+                            <!-- Simple Agent -->
+                            <div class="draggable-block flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-card cursor-grab"
+                                 data-block-title="Simple Agent"
+                                 data-block-description="Performs simple tasks"
+                                 data-icon-bg="bg-indigo-100"
+                                 data-icon-color="text-indigo-600"
+                                 data-icon-svg="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.898 20.624L16.5 21.75l-.398-1.126a3.375 3.375 0 00-2.456-2.456L12.75 18l1.126-.398a3.375 3.375 0 002.456-2.456L16.5 14.25l.398 1.126a3.375 3.375 0 002.456 2.456L20.25 18l-1.126.398a3.375 3.375 0 00-2.456 2.456z">
+                                <div class="p-1 bg-indigo-100 rounded-md"><svg class="w-5 h-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.898 20.624L16.5 21.75l-.398-1.126a3.375 3.375 0 00-2.456-2.456L12.75 18l1.126-.398a3.375 3.375 0 002.456-2.456L16.5 14.25l.398 1.126a3.375 3.375 0 002.456 2.456L20.25 18l-1.126.398a3.375 3.375 0 00-2.456 2.456z" /></svg></div>
+                                <div>
+                                    <div class="text-sm font-medium">Simple Agent</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">Performs simple tasks</div>
+                                </div>
+                            </div>
+                             <!-- ReAct Agent -->
+                            <div class="draggable-block flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-card cursor-grab"
+                                 data-block-title="ReAct Agent"
+                                 data-block-description="Handles complex tasks"
+                                 data-icon-bg="bg-pink-100"
+                                 data-icon-color="text-pink-600"
+                                 data-icon-svg="M7.5 3.75H6A2.25 2.25 0 003.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0120.25 6v1.5m0 9V18A2.25 2.25 0 0118 20.25h-1.5m-9 0H6A2.25 2.25 0 013.75 18v-1.5M15 12a3 3 0 11-6 0 3 3 0 016 0z">
+                                <div class="p-1 bg-pink-100 rounded-md"><svg class="w-5 h-5 text-pink-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 3.75H6A2.25 2.25 0 003.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0120.25 6v1.5m0 9V18A2.25 2.25 0 0118 20.25h-1.5m-9 0H6A2.25 2.25 0 013.75 18v-1.5M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>
+                                <div>
+                                    <div class="text-sm font-medium">ReAct Agent</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">Handles complex tasks</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- ======================================= -->
+            <!-- 3. Main Content (Block Designer)        -->
+            <!-- ======================================= -->
+            <main id="main-designer" class="flex-1 overflow-auto p-8 bg-gray-50 dark:bg-gray-900">
+                
+                <!-- Start Block -->
+                <div id="start-block" class="workflow-block-item" style="top: 2rem; left: 50%; transform: translateX(-50%);">
+                    <div class="start-block-content">
+                        <!-- Icon -->
+                        <svg class="w-5 h-5 text-gray-700 dark:text-gray-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.35 3.836A8.985 8.985 0 003 12c0 4.64 3.53 8.441 8.046 8.966m.01-.011A8.985 8.985 0 0021 12c0-4.64-3.53-8.441-8.046-8.966m-6.03 2.153a.75.75 0 00-1.06-1.06l-1.5 1.5a.75.75 0 101.06 1.06l1.5-1.5zM17.08 4.97a.75.75 0 00-1.06-1.06l-1.5 1.5a.75.75 0 101.06 1.06l1.5-1.5z" /></svg>
+                        <span class="ml-2 font-medium text-gray-800 dark:text-gray-100">Start</span>
+                    </div>
+                    <!-- Connectors for Start Block - Only one on the right -->
+                    <div class="connector-point right" data-point-id="start-right">
+                        <!-- Removed plus icon -->
+                    </div>
+                </div>
+
+                <!-- Dropped blocks will be appended here by jQuery -->
+
+            </main>
+
+            <!-- ======================================= -->
+            <!-- 4. Right Pane (Properties) - Hidden     -->
+            <!-- ======================================= -->
+            <aside id="properties-pane" class="w-96 bg-white dark:bg-dark-nav border-l border-gray-200 dark:border-dark-border p-6 overflow-y-auto flex-shrink-0 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 id="properties-title" class="text-xl font-semibold">Manager Agent</h2>
+                    <div class="flex items-center space-x-2">
+                        <button id="delete-block-btn" class="p-1 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900 hidden" title="Delete Block">
+                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.54 0c-.342.052-.682.107-1.022.166m11.022 0L12 2.25 9.27 5.79M4.772 5.79L4.772 4.5A2.25 2.25 0 017.022 2.25h9.956a2.25 2.25 0 012.25 2.25v1.294M4.772 5.79m14.456 0M4.772 5.79L2.5 5.79m16.5 0L21.5 5.79" />
+                            </svg>
+                        </button>
+                        <button id="close-properties" class="p-1 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-card" title="Close Properties">
+                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Tabs -->
+                <div class="border-b border-gray-200 dark:border-dark-border">
+                    <nav class="flex space-x-4 -mb-px" id="properties-tabs">
+                        <button data-tab="config" class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-brand-primary text-brand-primary">
+                            Configuration
+                        </button>
+                        <button data-tab="input" class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600">
+                            Input
+                        </button>
+                        <button data-tab="output" class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600">
+                            Output
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Tab Content -->
+                <div class="mt-6 space-y-6">
+                    <!-- Configuration Content (Default) -->
+                    <div id="tab-content-config" class="tab-content space-y-4">
+                        <div>
+                            <label for="state-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">State name</label>
+                            <input type="text" id="state-name" value="DataOperationsManager" class="mt-1 block w-full rounded-md border-gray-300 dark:border-dark-border shadow-sm bg-white dark:bg-dark-card focus:border-brand-primary focus:ring-brand-primary sm:text-sm">
+                        </div>
+                         <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Sequential Planner Prompt</label>
+                            <textarea rows="4" class="mt-1 block w-full rounded-md border-gray-300 dark:border-dark-border shadow-sm bg-white dark:bg-dark-card focus:border-brand-primary focus:ring-brand-primary sm:text-sm p-2">Please create a detailed plan for the following task. Ensure that each step is clear...</textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Sequential Final Prompt</label>
+                            <textarea rows="3" class="mt-1 block w-full rounded-md border-gray-300 dark:border-dark-border shadow-sm bg-white dark:bg-dark-card focus:border-brand-primary focus:ring-brand-primary sm:text-sm p-2">Summarize the results of the completed tasks...</textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Input Content (Hidden) -->
+                    <div id="tab-content-input" class="tab-content hidden">
+                        <p class="text-gray-600 dark:text-gray-400">Input parameters for this block will be configured here.</p>
+                    </div>
+
+                    <!-- Output Content (Hidden) -->
+                    <div id="tab-content-output" class="tab-content hidden">
+                        <p class="text-gray-600 dark:text-gray-400">Output data from this block will be configured here.</p>
+                    </div>
+                </div>
+
+            </aside>
+        </div>
+        
+        <!-- ======================================= -->
+        <!-- 5. Footer                               -->
+        <!-- ======================================= -->
+        <footer class="bg-gray-50 dark:bg-dark-bg border-t border-gray-200 dark:border-dark-border p-4">
+            <div class="container mx-auto flex justify-between items-center text-sm text-gray-600 dark:text-gray-400">
+                <div>
+                    &copy; 2025 AI Workflows, Inc. All rights reserved.
+                </div>
+                <div class="flex space-x-6">
+                    <a href="#" class="hover:text-brand-primary">Terms of Service</a>
+                    <a href="#" class="hover:text-brand-primary">Privacy Policy</a>
+                    <a href="#" class="hover:text-brand-primary">Contact</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-40 flex items-center justify-center hidden">
+        <div class="bg-white dark:bg-dark-card rounded-lg shadow-xl p-6 w-full max-w-sm m-4">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Delete Connection?</h3>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Are you sure you want to delete this connection?</p>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-200 dark:bg-dark-border text-gray-800 dark:text-gray-100 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancel</button>
+                <button id="modal-confirm-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Delete</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ======================================= -->
+    <!-- JavaScript (jQuery)                     -->
+    <!-- ======================================= -->
+    <script>
+        $(document).ready(function() {
+            
+            // --- Global State ---
+            let selectedBlock = null; // Holds the jQuery element of the selected block
+            let blockIdCounter = 0; // Ensures unique IDs for blocks
+            let lines = []; // Stores all LeaderLine instances
+            let lineStartElement = null; // Stores the starting connector point for a new line
+            let deleteCallback = null; // Stores the callback for the delete modal
+
+            // --- 1. Dark/Light Mode Toggle ---
+            const $themeToggle = $('#theme-toggle');
+            const $lightIcon = $('#theme-icon-light');
+            const $darkIcon = $('#theme-icon-dark');
+
+            // Check for saved theme in localStorage
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                $('html').addClass('dark');
+                $lightIcon.addClass('hidden');
+                $darkIcon.removeClass('hidden');
+            } else {
+                $('html').removeClass('dark');
+                $lightIcon.removeClass('hidden');
+                $darkIcon.addClass('hidden');
+            }
+
+            $themeToggle.on('click', function() {
+                // Toggle class on <html>
+                $('html').toggleClass('dark');
+                
+                // Toggle icons
+                $lightIcon.toggleClass('hidden');
+                $darkIcon.toggleClass('hidden');
+
+                // Save preference
+                if ($('html').hasClass('dark')) {
+                    localStorage.theme = 'dark';
+                } else {
+                    localStorage.theme = 'light';
+                }
+            });
+
+            
+            // --- 2. Left Pane Accordions ---
+            $('.accordion-header').on('click', function() {
+                const $content = $(this).next('.accordion-content');
+                const $icon = $(this).find('.accordion-icon');
+                
+                $content.slideToggle(200);
+                $icon.toggleClass('rotate-180');
+                
+                // Optional: Close other accordions
+                // $('.accordion-content').not($content).slideUp(200);
+                // $('.accordion-icon').not($icon).removeClass('rotate-180');
+            });
+            
+
+            // --- 3. Initialize Sidebar Draggables ---
+            $('.draggable-block').draggable({
+                helper: 'clone',
+                appendTo: 'body',
+                revert: 'invalid',
+                cursor: 'grabbing',
+                zIndex: 100,
+                classes: {
+                    "ui-draggable-dragging": "draggable-helper" // Custom class for the helper
+                }
+            });
+
+            // --- 4. Initialize Main Designer Droppable ---
+            $('#main-designer').droppable({
+                accept: '.draggable-block',
+                drop: function(event, ui) {
+                    const $designer = $(this);
+                    const designerOffset = $designer.offset();
+                    const dropPosition = {
+                        top: ui.offset.top - designerOffset.top + $designer.scrollTop(),
+                        left: ui.offset.left - designerOffset.left + $designer.scrollLeft()
+                    };
+
+                    const $draggedItem = $(ui.draggable);
+                    createWorkflowBlock({
+                        title: $draggedItem.data('block-title'),
+                        description: $draggedItem.data('block-description'),
+                        iconSvg: $draggedItem.data('icon-svg'),
+                        iconBg: $draggedItem.data('icon-bg'),
+                        iconColor: $draggedItem.data('icon-color')
+                    }, dropPosition);
+                }
+            });
+            
+            // --- 5. Function to Create a New Workflow Block ---
+            function createWorkflowBlock(data, position) {
+                const newId = `block-${blockIdCounter++}`;
+                const blockHTML = `
+                    <div id="${newId}" class="workflow-block-item" style="top: ${position.top}px; left: ${position.left}px;">
+                        <div class="block-content">
+                            <div class="p-4">
+                                <div class="flex items-center space-x-3">
+                                    <div class="p-2 ${data.iconBg} dark:${data.iconBg.replace('100', '900')} rounded-lg">
+                                        <svg class="w-6 h-6 ${data.iconColor} dark:${data.iconColor.replace('600', '300')}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="${data.iconSvg}" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold text-gray-800 dark:text-white">${data.title}</h3>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">${data.description}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Connector points -->
+                        <div class="connector-point top" data-point-id="${newId}-top">
+                            <!-- Removed plus icon -->
+                        </div>
+                        <div class="connector-point bottom" data-point-id="${newId}-bottom">
+                            <!-- Removed plus icon -->
+                        </div>
+                        <div class="connector-point left" data-point-id="${newId}-left">
+                            <!-- Removed plus icon -->
+                        </div>
+                        <div class="connector-point right" data-point-id="${newId}-right">
+                            <!-- Removed plus icon -->
+                        </div>
+                    </div>
+                `;
+                
+                const $newBlock = $(blockHTML);
+                $('#main-designer').append($newBlock);
+
+                // Make the new block draggable within the designer
+                $newBlock.draggable({
+                    containment: 'parent',
+                    handle: '.block-content', // Drag by the main content body
+                    drag: function(event, ui) {
+                        updateLinesForBlock($(this).attr('id'));
+                    }
+                });
+
+                // Add click event to select the block
+                $newBlock.on('click', function(e) {
+                    e.stopPropagation();
+                    selectBlock($newBlock);
+                });
+            }
+
+            // --- 6. Function to Select a Block ---
+            function selectBlock($block) {
+                // Don't re-select if already selected
+                if (selectedBlock && selectedBlock.attr('id') === $block.attr('id')) {
+                    return;
+                }
+                
+                // Deselect any previous block
+                if (selectedBlock) {
+                    selectedBlock.removeClass('selected-block');
+                }
+                
+                // Select the new block
+                selectedBlock = $block;
+                selectedBlock.addClass('selected-block');
+
+                // Update and show properties pane
+                const title = selectedBlock.find('h3').text();
+                $('#properties-title').text(title);
+                // TODO: Populate the rest of the properties form with block-specific data
+                
+                $('#properties-pane').removeClass('hidden');
+
+                // Show delete button (unless it's the Start block)
+                if (selectedBlock.attr('id') !== 'start-block') {
+                    $('#delete-block-btn').removeClass('hidden');
+                } else {
+                    $('#delete-block-btn').addClass('hidden');
+                }
+            }
+            
+            // --- 7. Function to Deselect All Blocks ---
+            function deselectAll() {
+                if (selectedBlock) {
+                    selectedBlock.removeClass('selected-block');
+                    selectedBlock = null;
+                }
+                $('#properties-pane').addClass('hidden');
+                $('#delete-block-btn').addClass('hidden');
+            }
+
+            // --- 8. Close Right Properties Pane ---
+            $('#close-properties').on('click', function() {
+                deselectAll();
+            });
+
+            // --- 9. Delete Block Button ---
+            $('#delete-block-btn').on('click', function() {
+                if (selectedBlock && selectedBlock.attr('id') !== 'start-block') {
+                    // Remove lines connected to this block
+                    const blockId = selectedBlock.attr('id');
+                    lines = lines.filter(line => {
+                        if (line.startBlock === blockId || line.endBlock === blockId) {
+                            line.line.remove();
+                            return false; // Remove from array
+                        }
+                        return true; // Keep in array
+                    });
+                    
+                    selectedBlock.remove();
+                    deselectAll();
+                }
+            });
+
+            // --- 10. Deselect when clicking canvas background ---
+            $('#main-designer').on('click', function(e) {
+                if (e.target.id === 'main-designer') {
+                    deselectAll();
+                }
+            });
+
+            // --- 11. Connector Point Logic ---
+            $('#main-designer').on('click', '.connector-point', function(e) {
+                e.stopPropagation(); // Prevent block selection
+                const $point = $(this);
+
+                if (!lineStartElement) {
+                    // This is the first point clicked
+                    lineStartElement = this;
+                    $point.css('background', '#1e40af'); // Highlight start point
+                } else {
+                    // This is the second point clicked
+                    const lineEndElement = this;
+                    
+                    // Don't connect a block to itself
+                    if ($(lineStartElement).closest('.workflow-block-item').attr('id') === $(lineEndElement).closest('.workflow-block-item').attr('id')) {
+                        $(lineStartElement).css('background', ''); // Reset start point
+                        lineStartElement = null;
+                        return;
+                    }
+
+                    // Create the line
+                    try {
+                        let lineOptions = {
+                            color: $('html').hasClass('dark') ? '#94a3b8' : '#94a3b8',
+                            size: 2,
+                            path: 'fluid', // Use 'fluid' for curved lines
+                            startPlug: 'dot',
+                            startPlugSize: 1.5,
+                            endPlug: 'arrow1',
+                            endPlugSize: 0.8
+                        };
+
+                        // Check if line starts from a 'bottom' connector
+                        if ($(lineStartElement).hasClass('bottom')) {
+                            lineOptions.dash = { animation: false, gap: 4, len: 4 };
+                        }
+
+                        const leaderLineInstance = new LeaderLine(lineStartElement, lineEndElement, lineOptions);
+                        
+                        // Store line info
+                        const lineInfo = {
+                            line: leaderLineInstance,
+                            startEl: lineStartElement,
+                            endEl: lineEndElement,
+                            startBlock: $(lineStartElement).closest('.workflow-block-item').attr('id'),
+                            endBlock: $(lineEndElement).closest('.workflow-block-item').attr('id')
+                        };
+                        
+                        // Add click-to-delete handler
+                        $(leaderLineInstance.line).on('click', function(e) {
+                            e.stopPropagation(); // Stop it from deselecting a block
+                            showDeleteConfirmationModal(() => {
+                                removeLine(lineInfo);
+                            });
+                        });
+                        
+                        lines.push(lineInfo);
+                    } catch (e) {
+                        console.error("Error creating LeaderLine:", e);
+                    }
+                    
+                    // Reset
+                    $(lineStartElement).css('background', '');
+                    lineStartElement = null;
+                }
+            });
+            
+            // --- 12. Function to Update Lines When a Block is Dragged ---
+            function updateLinesForBlock(blockId) {
+                lines.forEach(line => {
+                    if (line.startBlock === blockId || line.endBlock === blockId) {
+                        try {
+                           line.line.position();
+                        } catch(e) {
+                            // Line might be broken, remove it
+                            removeLine(line);
+                        }
+                    }
+                });
+            }
+
+            // --- 13. Remove a specific line (helper) ---
+            function removeLine(lineToRemove) {
+                lineToRemove.line.remove();
+                lines = lines.filter(l => l !== lineToRemove);
+            }
+
+            // --- 14. Delete Modal Logic ---
+            function showDeleteConfirmationModal(callback) {
+                deleteCallback = callback;
+                $('#delete-modal').removeClass('hidden');
+            }
+
+            $('#modal-cancel-btn').on('click', function() {
+                $('#delete-modal').addClass('hidden');
+                deleteCallback = null;
+            });
+
+            $('#modal-confirm-btn').on('click', function() {
+                if (deleteCallback) {
+                    deleteCallback();
+                }
+                $('#delete-modal').addClass('hidden');
+                deleteCallback = null;
+            });
+            
+            // --- 15. Make "Start" block clickable ---
+             $('#start-block').on('click', function(e) {
+                e.stopPropagation();
+                selectBlock($(this));
+            });
+
+            // --- 16. Right Pane Tabs (Unchanged) ---
+            $('#properties-tabs .tab-btn').on('click', function() {
+                const tabId = $(this).data('tab');
+
+                // Update tab button styles
+                $('#properties-tabs .tab-btn').removeClass('border-brand-primary text-brand-primary').addClass('border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600');
+                $(this).removeClass('border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600').addClass('border-brand-primary text-brand-primary');
+
+                // Show/hide tab content
+                $('.tab-content').addClass('hidden');
+                $('#tab-content-' + tabId).removeClass('hidden');
+            });
+            
+        });
+    </script>
+
+</body>
+</html>
+
+
+
